@@ -2,13 +2,11 @@
 
 ## lagrangrian from
 :
-$
-\begin{split}
+$\begin{split}
         L_{\delta}(X,A,B,U,V) =
         & {1\over 2}\lVert Z-X \rVert^2_F +\gamma \lVert X_\Omega \rVert_F^2 +\sum_{i<j}P_{\lambda}(\lVert A_{ij}\rVert ) \\
         &+\sum_{k<l} P_{\lambda}(\lVert B_{kl} \rVert )+\sum_{i<j}U_{ij}^T(A_{ij}-( X_i-X_j ) ) + {\delta \over2} \sum_{i<j} \lVert{ A_{ij}-( X_i-X_j )}\rVert^2_2\\&+\sum_{k<l}V_{kl}^T(B_{kl}-( X^k-X^l ) ) + {\delta \over2}\sum_{k<l}\lVert{ B_{kl}-( X^k-X^l )}\rVert^2_2
-\end{split}
-$
+\end{split}$
 
 ## ADMM update
 
