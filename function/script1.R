@@ -2,10 +2,18 @@
 library(gtools)
 library(dplyr)
 
+X<-x
+x<-km.mus
+lambda<-0.01
+gamma<-0.01
+#del<-1 0.5 0.1 
+Z<-x
+tol_error<-0.1
+max_iter<-100
 
-sc_bicluster <- function(lambda,gamma,del,Z,X,u,v,tol_error,max_iter){
+sc_bicluster <- function(lambda,gamma1,gamma2,del,Z,X,u,v,tol_error,max_iter){
   
-  #lambda/gamma = tunning parameter of SCAD penalty
+  #lambda/gamma2 = tunning parameter of SCAD penalty
   
   n<- nrow(X)
   p<- ncol(X)
@@ -32,10 +40,9 @@ sc_bicluster <- function(lambda,gamma,del,Z,X,u,v,tol_error,max_iter){
       Ei[k,(i-1)*p+k]<-1
       Ej[k,(j-1)*p+k]<-1
     }
-    E=Ei-Ej
-    A[,idx]<-E%*%vecxt
+    E_ij[[idx]]=Ei-Ej
+    A[,idx]<-E_ij[[idx]]%*%vecxt
     
-    E_ij[[idx]]=E
     
   }
   A_old<-A
@@ -55,9 +62,9 @@ sc_bicluster <- function(lambda,gamma,del,Z,X,u,v,tol_error,max_iter){
       Ei[k,(i-1)*n+k]<-1
       Ej[k,(j-1)*n+k]<-1
       }
-    E=Ei-Ej
-    B[,idx]<-E%*%vecx
-    E_kl[[idx]]=E
+    E_kl[[idx]]=Ei-Ej
+    B[,idx]<-E_kl[[idx]]%*%vecx
+
     
   }
   B_old<-B
@@ -66,21 +73,17 @@ sc_bicluster <- function(lambda,gamma,del,Z,X,u,v,tol_error,max_iter){
   
   #index matrix of X_omega
   idxom<-matrix(0,nrow=n*p,ncol=n*p)
-  m3 <- expand.grid(1:n,1:p)
+  #m3 <- expand.grid(1:n,1:p)
   vecz<-c(Z)
-  
-  
-  for(iter in 1:max_iter){
-    vecx_old=c(x_old)
-    for (idx in 1:nrow(m3)){
+  for (idx in 1:length(vec(z))){
       if(vecz[idx]==0)
-        idxom[m3[idx,1],m3[idx,2]]=vecx_old[idx]
+        diag(idxom)[idx]=1
       else
-        idxom[m3[idx,1],m3[idx,2]]=0
+        diag(idxom)[idx]=0
       
     }
-    
   
+  for(iter in 1:max_iter){
   
     #update X
     
@@ -109,7 +112,7 @@ sc_bicluster <- function(lambda,gamma,del,Z,X,u,v,tol_error,max_iter){
     
     
     
-    vecx_new=solve(diag(n*p)-gamma*t(idxom)%*%idxom+del*summat1+del*summat2)%*%(c(z)-summat3+del*summat4-summat5+del*summat6)
+    vecx_new=solve(diag(n*p)-gamma1*t(idxom)%*%idxom+del*summat1+del*summat2)%*%(c(Z)-summat3+del*summat4-summat5+del*summat6)
     
     #update A
     
@@ -118,26 +121,22 @@ sc_bicluster <- function(lambda,gamma,del,Z,X,u,v,tol_error,max_iter){
     for (idx in 1:nrow(m1)){
       gamma_ij=norm_vec(E_ij[[idx]]%*%vecx_new-(1/del)*u_old[,idx])
       a_ij=del*E_ij[[idx]]%*%vecx_new-u_old[,idx]
+      
       if(norm_vec(A_old[,idx])<=lambda){
         if(-lambda<(del*E_ij[[idx]]-u_old[,idx])&&(del*E_ij[[idx]]-u_old[,idx])<lambda){
           A_new[,idx]=0
         }
         else{
-          
-          
           A_new[,idx]=(1-(lambda/(2*del*gamma_ij)))*(E_ij[[idx]]%*%vecx_new-(1/del)*u_old[,idx])
           
         }
         
       }
       
-      else if(lambda<norm_vec(E_ij[[idx]])&&norm_vec(E_ij[[idx]]<gamma*lambda)){
-         if(-gamma*lambda<(2*(gamma-1)*(del*E_ij[[idx]]%*%vecx_new-u_old[,idx]))&&(2*(gamma-1)*(del*E_ij[[idx]]%*%vecx_new-u_old[,idx]))<gamma*lambda){
-           A_new[,idx]=0
-           }
-         else{
-          A_new[,idx]=((1/del)-(gamma*lambda/(2*del*(gamma-1)*norm_vec(a_ij))))*a_ij
-         }
+      else if(lambda<norm_vec(E_ij[[idx]])&&norm_vec(E_ij[[idx]]<gamma2*lambda)){
+    
+          A_new[,idx]=((1/del)-(gamma2*lambda/(2*del*(gamma2-1)*norm_vec(a_ij))))*a_ij
+         
       }
       else
         A_new[,idx]=E_ij[[idx]]%*%vecx_new-(1/del)*u_old[,idx]
@@ -166,11 +165,9 @@ sc_bicluster <- function(lambda,gamma,del,Z,X,u,v,tol_error,max_iter){
         
       }
       
-      else if(lambda<norm_vec(E_kl[[idx]])&&norm_vec(E_kl[[idx]]<gamma*lambda)){
-        if(-gamma*lambda<2*(gamma-1)*(del*E_kl[[idx]]%*%vecx_new-v_old[,idx])&&2*(gamma-1)*(del*E_kl[[idx]]%*%vecx_new-v_old[,idx])<gamma*lambda)
-          B_new[,idx]=0
-        else
-          B_new[,idx]=((1/del)-(gamma*lambda/(2*del*(gamma-1)*norm_vec(a_kl))))*a_kl
+      else if(lambda<norm_vec(E_kl[[idx]])&&norm_vec(E_kl[[idx]]<gamma2*lambda)){
+        
+          B_new[,idx]=((1/del)-(gamma2*lambda/(2*del*(gamma2-1)*norm_vec(a_kl))))*a_kl
       }
       else
         B_new[,idx]=E_kl[[idx]]%*%vecx_new-(1/del)*v_old[,idx]
@@ -195,8 +192,8 @@ sc_bicluster <- function(lambda,gamma,del,Z,X,u,v,tol_error,max_iter){
     #iteration error
     x_new<-matrix(vecx_new,nrow=n,ncol=p)
     iter_error[iter,"X"] <-Matrix:: norm(x_old-x_new,type="F")
-    iter_error[iter,"A"] <- Matrix::norm(as.matrix(A_old-A_new),type="F") 
-    iter_error[iter,"B"] <- Matrix::norm(as.matrix(B_old-B_new),type="F")
+    iter_error[iter,"A"] <-Matrix::norm(as.matrix(A_old-A_new),type="F") 
+    iter_error[iter,"B"] <-Matrix::norm(as.matrix(B_old-B_new),type="F")
     iter_error[iter,"U"] <-Matrix:: norm(as.matrix(u_old-u_new),type="F")
     iter_error[iter,"V"] <-Matrix:: norm(as.matrix(v_old-v_new),type="F")
     
